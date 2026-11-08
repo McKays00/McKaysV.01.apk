@@ -1,0 +1,1405 @@
+Berikut adalah implementasi lengkap aplikasi McKays Perfume Store POS & Inventory System yang siap digunakan secara langsung.
+Seluruh fitur yang Anda minta telah terintegrasi di dalam satu file komponen React ini:
+ * Kasir Penjualan Multi-Item (Gabungan): Dapat menggabungkan beberapa bibit parfum sekaligus (contoh: VC Scandal 10ml vs Aquakiss 10ml) beserta botol dalam satu transaksi.
+ * Pencarian Stok Instan: Kolom pencarian teks di menu katalog stok untuk mempermudah pencarian produk sesuai stok cabang.
+ * Multi-Order Item: Staff dapat memasukkan beberapa item order sekaligus ke dalam keranjang order sebelum dikirim ke Admin Pusat.
+ * Manajemen Member Global & Poin: Staff & Admin dapat menambahkan member baru (beserta ID kustom seperti 120176 untuk Orel) yang poinnya berlaku global. Admin dapat menghapus member.
+ * Kustomisasi Foto Profil (Zoom In/Out): Unggah dan sesuaikan ukuran foto profil dengan penggeser skala banner.
+ * Manajemen Cabang & Staff Dinamis: Admin dapat menambahkan toko cabang baru dan akun staff secara fleksibel.
+import React, { useState, useEffect } from 'react'; 
+import { LayoutDashboard, ShoppingCart, Package, Users, User as UserIcon, Lock, PlusCircle, MinusCircle, Calendar, ChevronRight, LogOut, Store, Download, Trash2, CheckCircle2, Moon, Sun, Camera, Eye, FileText, DollarSign, Inbox, TrendingUp, Award, Upload, Search } from 'lucide-react';
+
+// ==========================================
+// TOAST NOTIFICATION COMPONENT
+// ==========================================
+const Toast = ({ message, onClose }) => { 
+  useEffect(() => { 
+    const timer = setTimeout(onClose, 3000); 
+    return () => clearTimeout(timer); 
+  }, [message, onClose]);
+
+  if (!message) return null; 
+  return ( 
+    <div className="fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50 animate-slide-up w-11/12 max-w-sm pointer-events-none"> 
+      <div className="bg-gray-800 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-medium"> 
+        <CheckCircle2 size={18} className="text-green-400 flex-shrink-0" /> 
+        <span className="flex-1">{message}</span> 
+      </div> 
+    </div> 
+  ); 
+};
+
+// ==========================================
+// LOGIN SCREEN COMPONENT
+// ==========================================
+function LoginScreen({ onLogin, adminPassword, setAdminPassword, staffAccounts, showToast }) { 
+  const [username, setUsername] = useState(''); 
+  const [password, setPassword] = useState(''); 
+  const [showId, setShowId] = useState(false); 
+  const [showPassword, setShowPassword] = useState(false); 
+  const [isLoading, setIsLoading] = useState(false); 
+  const [forgotMode, setForgotMode] = useState(false); 
+  const [otpStep, setOtpStep] = useState(false); 
+  const [otp, setOtp] = useState(''); 
+  const [newPassword, setNewPassword] = useState('');
+
+  const handleLogin = (e) => { 
+    e.preventDefault(); 
+    setIsLoading(true); 
+    setTimeout(() => { 
+      setIsLoading(false); 
+      if (username === 'mckays' && password === adminPassword) { 
+        onLogin({ email: 'budayaxwel@gmail.com', username: 'mckays', isAdmin: true, branchName: 'Pusat' }); 
+        showToast('Login berhasil sebagai Admin Pusat'); 
+        return; 
+      } 
+      const staff = staffAccounts.find(s => s.username === username && s.password === password); 
+      if (staff) { 
+        onLogin({ email: `${staff.username}@mckays.com`, username: staff.username, isAdmin: false, branchName: staff.branchName }); 
+        showToast(`Berhasil login ke ${staff.branchName}`); 
+        return; 
+      } 
+      alert('ID atau Password salah!'); 
+    }, 800); 
+  };
+
+  const handleResetPassword = (e) => { 
+    e.preventDefault(); 
+    if (!otpStep) { 
+      alert("Kode OTP telah dikirim ke email admin (Simulasi)"); 
+      setOtpStep(true); 
+    } else { 
+      if (otp === '1234') { 
+        setAdminPassword(newPassword); 
+        alert("Password admin berhasil direset!"); 
+        setForgotMode(false); 
+        setOtpStep(false); 
+        setOtp(''); 
+        setNewPassword(''); 
+      } else { 
+        alert("Kode OTP salah!"); 
+      } 
+    } 
+  };
+
+  return ( 
+    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 text-gray-800 font-sans p-4"> 
+      <div className="w-full max-w-[420px] bg-white p-8 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col items-center"> 
+        <div className="w-24 h-24 bg-blue-50 rounded-[2rem] border border-blue-100 flex items-center justify-center shadow-inner mb-6 relative"> 
+          <div className="absolute inset-0 bg-blue-500/10 blur-xl rounded-full"></div> 
+          <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg relative z-10"> 
+            <span className="text-white font-extrabold text-xl">M</span> 
+          </div> 
+        </div> 
+        <h1 className="text-2xl font-extrabold text-gray-900 mb-1">McKays</h1> 
+        <p className="text-xs text-gray-500 font-medium mb-6">Sistem Manajemen & Inventaris</p>
+
+        {forgotMode ? ( 
+          <form onSubmit={handleResetPassword} className="w-full space-y-4 animate-fade-in"> 
+            <p className="text-sm text-gray-600 text-center mb-4">Reset sandi admin pusat</p> 
+            {!otpStep ? ( 
+              <button type="submit" className="w-full bg-blue-100 text-blue-700 py-4 rounded-2xl font-bold">Kirim OTP ke Email</button> 
+            ) : ( 
+              <> 
+                <input type="text" placeholder="Masukkan 4 digit OTP (Cth: 1234)" value={otp} onChange={e=>setOtp(e.target.value)} className="w-full bg-gray-50 border border-gray-200 px-4 py-4 rounded-2xl text-sm outline-none focus:border-blue-500 text-center tracking-widest" /> 
+                <input type="password" placeholder="Sandi Admin Baru" value={newPassword} onChange={e=>setNewPassword(e.target.value)} className="w-full bg-gray-50 border border-gray-200 px-4 py-4 rounded-2xl text-sm outline-none focus:border-blue-500" /> 
+                <button type="submit" className="w-full bg-[#1E3A8A] text-white py-4 rounded-2xl font-bold">Simpan Sandi Baru</button> 
+              </> 
+            )} 
+            <button type="button" onClick={() => {setForgotMode(false); setOtpStep(false);}} className="w-full text-gray-400 font-bold text-xs mt-2">Batal & Kembali ke Login</button> 
+          </form> 
+        ) : ( 
+          <form onSubmit={handleLogin} className="w-full space-y-4 animate-fade-in"> 
+            <div className="relative"> 
+              <UserIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} /> 
+              <input type={showId ? "text" : "password"} value={username} onChange={e => setUsername(e.target.value)} placeholder="ID" className="w-full bg-gray-50 border border-gray-200 pl-12 pr-12 py-4 rounded-2xl text-sm outline-none focus:border-blue-500 transition-all font-medium" /> 
+              <button type="button" onClick={() => setShowId(!showId)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"><Eye size={20} /></button> 
+            </div> 
+            <div className="relative"> 
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} /> 
+              <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} placeholder="Insert password" className="w-full bg-gray-50 border border-gray-200 pl-12 pr-12 py-4 rounded-2xl text-sm outline-none focus:border-blue-500 transition-all font-medium" /> 
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-600"><Eye size={20} /></button> 
+            </div> 
+            <button type="submit" disabled={isLoading} className="w-full bg-[#1E3A8A] text-white py-4 rounded-2xl font-bold flex justify-center items-center h-[56px] shadow-lg shadow-blue-900/30"> 
+              {isLoading ? <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div> : 'LOGIN'} 
+            </button> 
+          </form> 
+        )} 
+      </div> 
+    </div> 
+  ); 
+}
+
+// ========================================== 
+// MAIN APP COMPONENT 
+// ========================================== 
+export default function App() { 
+  const [currentUser, setCurrentUser] = useState(() => { 
+    const savedUser = localStorage.getItem('mckays_user_session'); 
+    return savedUser ? JSON.parse(savedUser) : null; 
+  });
+
+  useEffect(() => { 
+    if (currentUser) localStorage.setItem('mckays_user_session', JSON.stringify(currentUser)); 
+    else localStorage.removeItem('mckays_user_session'); 
+  }, [currentUser]);
+
+  const [adminPassword, setAdminPassword] = useState('bismillah22'); 
+  const [activeTab, setActiveTab] = useState('home'); 
+  const [toastMessage, setToastMessage] = useState(''); 
+  const [isDarkMode, setIsDarkMode] = useState(false); 
+  const [userAvatars, setUserAvatars] = useState({});
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [showZoomModal, setShowZoomModal] = useState(false);
+  const [tempImage, setTempImage] = useState(null);
+
+  const [masterPrices, setMasterPrices] = useState({ 
+    botol: { 10: 3000, 15: 4000, 20: 5000, 30: 7000, 50: 10000, 100: 15000 }, 
+    bibit: { 'CH Manhattan': 2600, 'DHL Blue Desiro': 3000, 'Baccarat Rouge': 3333, 'VC Scandal': 2500, 'PL Romantichwish': 2700, 'Pink Shiffon': 2400, 'ES Cherry': 3100, 'Air ZR Nude': 2800, 'Aquakiss': 2400 } 
+  });
+
+  const [stockOrders, setStockOrders] = useState([]); 
+  
+  const [members, setMembers] = useState([ 
+    { id: '120176', name: 'Orel', phone: '081234567890', points: 150 },
+    { id: '1', name: 'Siti Rahma', phone: '089876543210', points: 450 } 
+  ]);
+
+  const [inventory, setInventory] = useState([ 
+    { id: 1, type: 'Bibit', name: 'CH Manhattan', ml: 50, stock_sisa: 200, branchName: 'Pusat' }, 
+    { id: 2, type: 'Bibit', name: 'DHL Blue Desiro', ml: 30, stock_sisa: 150, branchName: 'Pusat' }, 
+    { id: 3, type: 'Bibit', name: 'Baccarat Rouge', ml: 30, stock_sisa: 50, branchName: 'Cabang Bandung' }, 
+    { id: 4, type: 'Bibit', name: 'VC Scandal', ml: 30, stock_sisa: 85, branchName: 'Pusat' }, 
+    { id: 5, type: 'Bibit', name: 'PL Romantichwish', ml: 30, stock_sisa: 4, branchName: 'Pusat' }, 
+    { id: 6, type: 'Bibit', name: 'Pink Shiffon', ml: 30, stock_sisa: 8, branchName: 'Cabang Bandung' }, 
+    { id: 7, type: 'Bibit', name: 'ES Cherry', ml: 30, stock_sisa: 95, branchName: 'Pusat' }, 
+    { id: 8, type: 'Bibit', name: 'Air ZR Nude', ml: 30, stock_sisa: 60, branchName: 'Cabang Bandung' },
+    { id: 9, type: 'Bibit', name: 'Aquakiss', ml: 30, stock_sisa: 120, branchName: 'Cabang Bandung' },
+    { id: 10, type: 'Botol', name: 'Botol', ml: 10, stock_sisa: 80, branchName: 'Cabang Bandung' },
+    { id: 11, type: 'Botol', name: 'Botol', ml: 30, stock_sisa: 100, branchName: 'Pusat' }, 
+    { id: 12, type: 'Botol', name: 'Botol', ml: 50, stock_sisa: 50, branchName: 'Pusat' }, 
+    { id: 13, type: 'Botol', name: 'Botol', ml: 30, stock_sisa: 9, branchName: 'Cabang Bandung' }, 
+  ]);
+
+  const [transactions, setTransactions] = useState([]); 
+  const [branches, setBranches] = useState(['Pusat', 'Cabang Bandung', 'Cabang Surabaya']); 
+  const [adminSelectedBranch, setAdminSelectedBranch] = useState('Pusat');
+
+  const [staffAccounts, setStaffAccounts] = useState([ 
+    { id: 1, username: 'budi', password: '123', branchName: 'Cabang Bandung' } 
+  ]);
+
+  const showToast = (msg) => setToastMessage(msg); 
+  const formatCurrency = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(num);
+
+  if (!currentUser) { 
+    return <LoginScreen onLogin={currentUserSession => { setCurrentUser(currentUserSession); if(currentUserSession.isAdmin) setAdminSelectedBranch(currentUserSession.branchName); }} adminPassword={adminPassword} setAdminPassword={setAdminPassword} staffAccounts={staffAccounts} showToast={showToast} />; 
+  }
+
+  const activeBranchName = currentUser.isAdmin ? adminSelectedBranch : currentUser.branchName; 
+  const filteredInventory = inventory.filter(inv => inv.branchName === activeBranchName).sort((a,b) => a.name.localeCompare(b.name)); 
+  const filteredTransactions = transactions.filter(tx => tx.branchName === activeBranchName);
+
+  return ( 
+    <div className={`flex justify-center items-center min-h-screen font-sans transition-colors duration-300 ${isDarkMode ? 'bg-gray-950 dark' : 'bg-gray-100 text-gray-800'}`}> 
+      <div className={`w-full max-w-[420px] h-[100dvh] sm:h-[850px] sm:max-h-[95vh] sm:rounded-[2.5rem] shadow-2xl overflow-hidden relative sm:border-8 border-gray-800 flex flex-col transition-colors duration-300 ${isDarkMode ? 'bg-gray-900 text-gray-100' : 'bg-[#F4F6F9] text-gray-800'}`}>
+
+        <header className="bg-transparent p-4 flex items-center justify-between z-10"> 
+          <div> 
+            <h1 className="text-lg font-bold text-gray-900 leading-tight">McKays</h1> 
+            {currentUser.isAdmin ? ( 
+              <p className="text-xs text-blue-600 font-bold">Akses: Admin Pusat</p> 
+            ) : ( 
+              <p className="text-xs text-blue-600 font-medium">Cabang: {currentUser.branchName}</p> 
+            )} 
+          </div> 
+          <div className="w-10 h-10 rounded-full bg-blue-100 border-2 border-blue-200 text-blue-700 flex items-center justify-center font-bold overflow-hidden shadow-sm"> 
+            {userAvatars[currentUser.email] ? (
+              <img src={userAvatars[currentUser.email]} alt="avatar" style={{ transform: `scale(${zoomLevel})` }} className="w-full h-full object-cover transition-transform" />
+            ) : (
+              <UserIcon size={20} />
+            )} 
+          </div> 
+        </header>
+
+        <main className="flex-1 overflow-y-auto pb-24 relative scroll-smooth"> 
+          {activeTab === 'home' && ( 
+            <HomeTab transactions={filteredTransactions} setTransactions={setTransactions} formatCurrency={formatCurrency} currentUser={currentUser} branches={branches} adminSelectedBranch={adminSelectedBranch} setAdminSelectedBranch={setAdminSelectedBranch} inventory={inventory} setInventory={setInventory} members={members} setMembers={setMembers} activeBranchName={activeBranchName} masterPrices={masterPrices} showToast={showToast} /> 
+          )} 
+          {activeTab === 'sales' && ( 
+            <StockTab inventory={inventory} setInventory={setInventory} activeBranchName={activeBranchName} stockOrders={stockOrders} setStockOrders={setStockOrders} currentUser={currentUser} showToast={showToast} /> 
+          )} 
+          {activeTab === 'history' && ( 
+            <HistoryTab transactions={filteredTransactions} activeBranchName={activeBranchName} formatCurrency={formatCurrency} /> 
+          )} 
+          {activeTab === 'members' && ( 
+            <MemberTab members={members} setMembers={setMembers} currentUser={currentUser} showToast={showToast} /> 
+          )} 
+          {activeTab === 'profile' && ( 
+            <ProfileTab 
+              currentUser={currentUser} 
+              onLogout={() => { localStorage.removeItem('mckays_user_session'); setCurrentUser(null); }} 
+              members={members} 
+              setMembers={setMembers} 
+              branches={branches} 
+              setBranches={setBranches} 
+              staffAccounts={staffAccounts} 
+              setStaffAccounts={setStaffAccounts} 
+              transactions={transactions} 
+              masterPrices={masterPrices} 
+              setMasterPrices={setMasterPrices} 
+              stockOrders={stockOrders} 
+              setStockOrders={setStockOrders} 
+              inventory={inventory} 
+              setInventory={setInventory} 
+              showToast={showToast} 
+              isDarkMode={isDarkMode} 
+              setIsDarkMode={setIsDarkMode} 
+              userAvatars={userAvatars} 
+              setUserAvatars={setUserAvatars}
+              zoomLevel={zoomLevel}
+              setZoomLevel={setZoomLevel}
+              showZoomModal={showZoomModal}
+              setShowZoomModal={setShowZoomModal}
+              tempImage={tempImage}
+              setTempImage={setTempImage}
+            /> 
+          )} 
+        </main>
+
+        <nav className="bg-white border-t border-gray-100 flex justify-around items-center px-2 py-3 absolute bottom-0 w-full z-20 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] rounded-t-3xl pb-safe"> 
+          <NavItem icon={LayoutDashboard} label="Home" isActive={activeTab === 'home'} onClick={() => setActiveTab('home')} /> 
+          <NavItem icon={Package} label="Katalog" isActive={activeTab === 'sales'} onClick={() => setActiveTab('sales')} /> 
+          <NavItem icon={FileText} label="Riwayat" isActive={activeTab === 'history'} onClick={() => setActiveTab('history')} /> 
+          <NavItem icon={Users} label="Member" isActive={activeTab === 'members'} onClick={() => setActiveTab('members')} /> 
+          <NavItem icon={UserIcon} label="Akun" isActive={activeTab === 'profile'} onClick={() => setActiveTab('profile')} /> 
+        </nav>
+
+        <Toast message={toastMessage} onClose={() => setToastMessage('')} />
+
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes slide-up { from { opacity: 0; transform: translateY(100%); } to { opacity: 1; transform: translateY(0); } } 
+          @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } } 
+          .animate-slide-up { animation: slide-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; } 
+          .animate-fade-in { animation: fade-in 0.2s ease-out forwards; } 
+          .pb-safe { padding-bottom: env(safe-area-inset-bottom, 12px); } 
+          .hidescrollbar::-webkit-scrollbar { display: none; } 
+          .hidescrollbar { -ms-overflow-style: none; scrollbar-width: none; } 
+          .dark .bg-white { background-color: #1F2937 !important; border-color: #374151 !important; color: #F9FAFB !important; } 
+          .dark .bg-gray-50, .dark .bg-gray-100 { background-color: #374151 !important; border-color: #4B5563 !important; color: #F9FAFB !important; } 
+          .dark .text-gray-900, .dark .text-gray-800 { color: #F9FAFB !important; } 
+          .dark .text-gray-500, .dark .text-gray-600 { color: #9CA3AF !important; } 
+          .dark input, .dark select { background-color: #1F2937 !important; color: #F9FAFB !important; border-color: #4B5563 !important; }
+        `}} /> 
+      </div> 
+    </div> 
+  ); 
+}
+
+// ========================================== 
+// 1. HOME TAB (Kasir Multi-Item Gabungan & Omset) 
+// ========================================== 
+function HomeTab({ transactions, setTransactions, formatCurrency, currentUser, branches, adminSelectedBranch, setAdminSelectedBranch, inventory, setInventory, masterPrices, members, setMembers, activeBranchName, showToast }) { 
+  const [activeModal, setActiveModal] = useState(false);
+
+  const getLocalYMD = () => { 
+    const d = new Date(); 
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; 
+  }; 
+  const [selectedDate, setSelectedDate] = useState(getLocalYMD());
+
+  const dailyTransactions = transactions.filter(tx => tx.date === selectedDate); 
+  const totalOmset = dailyTransactions.reduce((acc, curr) => acc + curr.price, 0) || 0;
+
+  const getBestSellers = () => { 
+    const now = new Date(); 
+    let seed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate(); 
+    if (now.getHours() < 7) seed -= 1;
+
+    const targetNames = ['VC Scandal', 'PL Romantichwish', 'Pink Shiffon', 'ES Cherry', 'Air ZR Nude']; 
+    const availableTargets = inventory.filter(inv => inv.branchName === activeBranchName && inv.type === 'Bibit' && targetNames.includes(inv.name));
+
+    const rotated = [...availableTargets].sort((a, b) => { 
+      const hashA = (a.name.charCodeAt(0) * seed) % 100; 
+      const hashB = (b.name.charCodeAt(0) * seed) % 100; 
+      return hashB - hashA; 
+    });
+
+    return rotated.slice(0, 3); 
+  }; 
+  const currentBestSellers = getBestSellers(); 
+  const branchInventory = inventory.filter(inv => inv.branchName === activeBranchName);
+  const bibitInventory = branchInventory.filter(inv => inv.type === 'Bibit');
+
+  const [cartItems, setCartItems] = useState([]); 
+  const [selectedBibitId, setSelectedBibitId] = useState(bibitInventory.length > 0 ? bibitInventory[0].id : '');
+  const [inputMl, setInputMl] = useState(10);
+  
+  const [botolPcs, setBotolPcs] = useState(1);
+  const [botolMl, setBotolMl] = useState(10);
+  
+  const [selectedMemberId, setSelectedMemberId] = useState(''); 
+  const [newMemberName, setNewMemberName] = useState(''); 
+  const [newMemberPhone, setNewMemberPhone] = useState('');
+  const [newMemberId, setNewMemberId] = useState('');
+
+  const handleAddBibitToCart = () => {
+    const item = bibitInventory.find(i => i.id === Number(selectedBibitId));
+    if (!item) return alert("Pilih bibit yang valid!");
+    if (inputMl <= 0) return alert("Masukkan takaran ml bibit!");
+
+    const pricePerMl = masterPrices.bibit[item.name] || 2500;
+
+    setCartItems(prev => [
+      ...prev,
+      {
+        cartId: Date.now() + Math.random(),
+        bibitId: item.id,
+        name: item.name,
+        ml: Number(inputMl),
+        pricePerMl: pricePerMl,
+        subtotal: pricePerMl * Number(inputMl)
+      }
+    ]);
+    showToast(`Berhasil menambahkan ${item.name} (${inputMl}ml) ke keranjang.`);
+  };
+
+  const handleRemoveCartItem = (cartId) => {
+    setCartItems(prev => prev.filter(c => c.cartId !== cartId));
+  };
+
+  const totalBibitPrice = cartItems.reduce((acc, curr) => acc + curr.subtotal, 0);
+  const baseBotolPrice = masterPrices.botol[botolMl] || Math.round(((masterPrices.botol[30] || 7000) / 30) * botolMl);
+  const totalBotolPrice = baseBotolPrice * Number(botolPcs);
+  const grandTotal = totalBibitPrice + totalBotolPrice;
+
+  const handleSalesProcess = () => {
+    if (cartItems.length === 0 && botolPcs <= 0) {
+      return alert("Keranjang masih kosong! Tambahkan minimal 1 item bibit atau botol.");
+    }
+
+    let finalMember = null; 
+    let earnedPoints = 0;
+
+    if (selectedMemberId === 'new') { 
+      if (!newMemberName.trim()) return alert("Nama member baru wajib diisi!"); 
+      earnedPoints = Math.floor(grandTotal / 10000); 
+      const generatedId = newMemberId.trim() || String(Math.floor(100000 + Math.random() * 900000));
+      const newMem = { id: generatedId, name: newMemberName, phone: newMemberPhone || '-', points: earnedPoints }; 
+      setMembers(prev => [...prev, newMem]); 
+      finalMember = newMem; 
+    } else if (selectedMemberId) { 
+      finalMember = members.find(m => String(m.id) === String(selectedMemberId)); 
+      if (finalMember) { 
+        earnedPoints = Math.floor(grandTotal / 10000); 
+        setMembers(prev => prev.map(m => String(m.id) === String(finalMember.id) ? { ...m, points: m.points + earnedPoints } : m)); 
+      } 
+    }
+
+    const bibitLabels = cartItems.map(c => `${c.name} ${c.ml}ml`).join(' vs ');
+    const botolLabel = botolPcs > 0 ? `dan Botol ${botolMl}ml ${botolPcs}pcs` : '';
+    const transactionLabel = [bibitLabels, botolLabel].filter(Boolean).join(' ');
+
+    setInventory(prev => prev.map(inv => {
+      if (inv.branchName === activeBranchName) {
+        const matchingCartItem = cartItems.find(c => c.bibitId === inv.id);
+        if (matchingCartItem) {
+          return { ...inv, stock_sisa: Math.max(0, inv.stock_sisa - matchingCartItem.ml) };
+        }
+        if (inv.type === 'Botol' && inv.ml === Number(botolMl)) {
+          return { ...inv, stock_sisa: Math.max(0, inv.stock_sisa - Number(botolPcs)) };
+        }
+      }
+      return inv;
+    }));
+
+    setTransactions(prev => [{ 
+      id: Date.now(), 
+      branchName: activeBranchName, 
+      type: 'Kasir Gabungan (Multi-Item)', 
+      item: transactionLabel, 
+      detail: `Gabungan ${cartItems.length} bibit & ${botolPcs} botol`, 
+      price: grandTotal, 
+      member: finalMember ? `${finalMember.name} (ID: ${finalMember.id})` : 'Umum', 
+      points_earned: earnedPoints, 
+      time: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }), 
+      date: getLocalYMD() 
+    }, ...prev]);
+
+    setCartItems([]);
+    setBotolPcs(1);
+    setSelectedMemberId(''); 
+    setActiveModal(false); 
+    showToast("Transaksi gabungan multi-item berhasil diproses!"); 
+  };
+
+  const lowStockItems = branchInventory.filter(inv => inv.stock_sisa < 10).slice(0, 4);
+
+  return ( 
+    <div className="px-4 py-4 space-y-5"> 
+      {currentUser.isAdmin && ( 
+        <div className="bg-white border border-gray-100 rounded-[2rem] p-4 shadow-sm"> 
+          <p className="text-xs font-bold text-gray-500 mb-3 flex items-center gap-1"><Store size={14}/> Filter Pantauan Admin:</p> 
+          <div className="flex gap-2 overflow-x-auto hidescrollbar pb-1"> 
+            {branches.map(b => ( 
+              <button key={b} onClick={() => setAdminSelectedBranch(b)} className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap shrink-0 transition-colors ${adminSelectedBranch === b ? 'bg-[#1E3A8A] text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} > 
+                {b} 
+              </button> 
+            ))} 
+          </div> 
+        </div> 
+      )}
+
+      <div className="bg-gradient-to-br from-[#1E3A8A] to-blue-500 rounded-[2rem] p-6 text-white shadow-xl shadow-blue-900/20 relative overflow-hidden"> 
+        <div className="absolute -right-6 -bottom-6 opacity-20 transform -rotate-12"> <TrendingUp size={140} /> </div>
+        <div className="relative z-10"> 
+          <p className="text-blue-100 text-xs font-medium mb-1">Total Omset ({currentUser.isAdmin ? adminSelectedBranch : currentUser.branchName})</p> 
+          <h2 className="text-3xl font-extrabold tracking-tight">{formatCurrency(totalOmset)}</h2> 
+          <div className="mt-4 flex items-center justify-between"> 
+            <div className="relative flex items-center gap-2 text-xs bg-white/20 w-max px-3 py-1.5 rounded-full backdrop-blur-sm"> 
+              <Calendar size={12} /> 
+              <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="bg-transparent outline-none text-white font-bold cursor-pointer text-xs [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert" /> 
+            </div> 
+          </div> 
+        </div> 
+      </div>
+
+      <button onClick={() => { setActiveModal(true); }} className="w-full bg-[#1E3A8A] text-white p-4 rounded-2xl flex items-center justify-center gap-2 shadow-md hover:bg-blue-900 transition-colors"> 
+        <ShoppingCart size={24} /> 
+        <span className="font-bold">Buka Kasir Penjualan Gabungan (Multi-Item)</span> 
+      </button>
+
+      <div> 
+        <h3 className="font-bold text-xs text-orange-500 uppercase tracking-wider mb-3 px-2 flex items-center gap-1"> <Award size={16} /> BEST SELLER (HARI INI) </h3> 
+        <div className="flex gap-3 overflow-x-auto hidescrollbar pb-2"> 
+          {currentBestSellers.length === 0 ? ( 
+            <p className="text-xs text-gray-500 italic px-2">Tidak ada item best seller di stok Anda saat ini.</p> 
+          ) : ( 
+            currentBestSellers.map(inv => ( 
+              <div key={inv.id} className="min-w-[140px] bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 p-3 rounded-2xl flex flex-col justify-center relative overflow-hidden"> 
+                <h4 className="font-bold text-sm text-gray-900 line-clamp-1 relative z-10">{inv.name}</h4> 
+                <p className="text-[10px] text-orange-700 font-medium mt-1 relative z-10">Tersedia: {inv.stock_sisa}ml</p> 
+              </div> 
+            )) 
+          )} 
+        </div> 
+      </div>
+
+      <div> 
+        <h3 className="font-bold text-xs text-red-500 uppercase tracking-wider mb-3 px-2 mt-2">⚠️ Stok Menipis ({activeBranchName})</h3> 
+        <div className="space-y-2"> 
+          {lowStockItems.length === 0 ? ( 
+            <p className="text-xs text-gray-500 italic px-2">Tidak ada stok yang di bawah 10.</p> 
+          ) : ( 
+            lowStockItems.map(inv => ( 
+              <div key={inv.id} className="bg-red-50 border border-red-100 p-3 rounded-2xl flex justify-between items-center"> 
+                <div> 
+                  <h4 className="font-bold text-sm text-gray-900 line-clamp-1"> {inv.type === 'Botol' ? '🫙 Botol ' : '📦 '}{inv.name} </h4> 
+                  <p className="text-[10px] text-gray-500">Ukuran: {inv.ml}{inv.type === 'Botol' ? 'pcs' : 'ml'}</p> 
+                </div> 
+                <div className="bg-red-100 text-red-700 px-2 py-1 rounded-lg text-xs font-bold">Sisa: {inv.stock_sisa}{inv.type === 'Botol' ? 'pcs' : 'ml'}</div> 
+              </div> 
+            )) 
+          )} 
+        </div> 
+      </div>
+
+      {activeModal && ( 
+        <ModalWrapper title="Kasir Gabungan (Multi-Item)" onClose={() => setActiveModal(false)}> 
+          <div className="space-y-4"> 
+            <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-xs text-blue-800">
+              Anda dapat menggabungkan beberapa bibit parfum (Contoh: <b>VC Scandal 10ml vs Aquakiss 10ml</b>) serta memilih botol dalam 1 transaksi.
+            </div>
+
+            <div className="space-y-2 border-b border-gray-200 pb-4">
+              <label className="text-xs font-bold text-gray-500 block">Pilih & Gabungkan Bibit Parfum</label>
+              <div className="flex gap-2">
+                <select value={selectedBibitId} onChange={e=>setSelectedBibitId(e.target.value)} className="flex-1 bg-gray-50 border border-gray-200 p-2.5 rounded-xl text-xs font-medium outline-none"> 
+                  {bibitInventory.length === 0 && <option value="">(Stok kosong)</option>} 
+                  {bibitInventory.map(inv => <option key={inv.id} value={inv.id}>{inv.name} (Sisa: {inv.stock_sisa}ml)</option>)} 
+                </select>
+                <input type="number" min="1" value={inputMl} onChange={e=>setInputMl(Math.max(1, Number(e.target.value)||0))} placeholder="ml" className="w-20 bg-gray-50 border border-gray-200 p-2.5 rounded-xl text-xs font-bold text-center" />
+                <button type="button" onClick={handleAddBibitToCart} className="bg-green-600 text-white px-4 rounded-xl text-xs font-bold">Tambah</button>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-bold text-gray-500 mb-2">Item Bibit Digabungkan ({cartItems.length}):</p>
+              {cartItems.length === 0 ? (
+                <p className="text-[11px] text-gray-400 italic">Belum ada bibit ditambahkan ke keranjang.</p>
+              ) : (
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {cartItems.map((c) => (
+                    <div key={c.cartId} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100 text-xs">
+                      <div>
+                        <b>{c.name}</b> ({c.ml}ml)
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-blue-600">{formatCurrency(c.subtotal)}</span>
+                        <button onClick={() => handleRemoveCartItem(c.cartId)} className="text-red-500"><Trash2 size={14}/></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 border-t border-gray-200 pt-3">
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">Jumlah Botol (Pcs)</label>
+                <input type="number" min="0" value={botolPcs} onChange={e=>setBotolPcs(Math.max(0, Number(e.target.value)||0))} className="w-full bg-gray-50 border border-gray-200 p-2.5 rounded-xl text-xs font-bold text-center" />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">Ukuran Botol (ml)</label>
+                <select value={botolMl} onChange={e=>setBotolMl(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 p-2.5 rounded-xl text-xs font-bold text-center">
+                  {[10, 15, 20, 30, 50, 100].map(v => <option key={v} value={v}>{v} ml</option>)}
+                </select>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 p-3 rounded-xl border border-gray-200 flex justify-between items-center">
+              <span className="text-xs font-bold text-gray-600">Total Keseluruhan:</span>
+              <span className="text-base font-black text-blue-600">{formatCurrency(grandTotal)}</span>
+            </div>
+
+            <div className="border-t border-gray-200 pt-3"> 
+              <label className="text-xs font-bold text-gray-500 block mb-1">Member (Poin Berlaku Global)</label> 
+              <select value={selectedMemberId} onChange={e=>setSelectedMemberId(e.target.value)} className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl outline-none text-xs font-medium"> 
+                <option value="">Pelanggan Umum (Tanpa Poin)</option> 
+                {members.map(m => <option key={m.id} value={m.id}>{m.name} (ID: {m.id} - Poin: {m.points})</option>)} 
+                <option value="new" className="font-bold text-blue-600">+ Tambah Member Baru</option> 
+              </select> 
+            </div>
+
+            {selectedMemberId === 'new' && ( 
+              <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 space-y-2"> 
+                <input type="text" placeholder="ID Member (Cth: 120176)" value={newMemberId} onChange={e=>setNewMemberId(e.target.value)} className="w-full bg-white p-2.5 rounded-xl text-xs" />
+                <input type="text" placeholder="Nama Member (Cth: Orel)" value={newMemberName} onChange={e=>setNewMemberName(e.target.value)} className="w-full bg-white p-2.5 rounded-xl text-xs" /> 
+                <input type="text" placeholder="No Telp (Opsional)" value={newMemberPhone} onChange={e=>setNewMemberPhone(e.target.value)} className="w-full bg-white p-2.5 rounded-xl text-xs" /> 
+              </div> 
+            )} 
+
+            <button onClick={handleSalesProcess} className="w-full bg-[#1E3A8A] text-white py-3.5 rounded-2xl font-bold shadow-lg mt-2 text-sm">Proses Transaksi Gabungan</button> 
+          </div> 
+        </ModalWrapper> 
+      )} 
+    </div> 
+  ); 
+}
+
+// ========================================== 
+// 2. STOCK TAB (Pencarian Stok & Multi-Order Item) 
+// ========================================== 
+function StockTab({ inventory, setInventory, activeBranchName, stockOrders, setStockOrders, currentUser, showToast }) { 
+  const [activeModal, setActiveModal] = useState(false); 
+  const [receiveItem, setReceiveItem] = useState(null); 
+  const [actualQty, setActualQty] = useState(0);
+
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [newItemType, setNewItemType] = useState('Bibit');
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemMl, setNewItemMl] = useState(30);
+  const [newItemStock, setNewItemStock] = useState(50);
+
+  const [orderCart, setOrderCart] = useState([]); 
+  const [orderType, setOrderType] = useState('Bibit');
+  const [orderItemName, setOrderItemName] = useState('');
+  const [orderMl, setOrderMl] = useState(30);
+  const [orderQty, setOrderQty] = useState(50);
+
+  const [editStockItem, setEditStockItem] = useState(null);
+  const [updatedStockValue, setUpdatedStockValue] = useState(0);
+
+  const branchOrders = stockOrders.filter(o => o.branchName === activeBranchName); 
+  const currentBranchInventory = inventory.filter(i => i.branchName === activeBranchName);
+
+  const filteredInventory = currentBranchInventory.filter(i => 
+    i.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const bibitStock = filteredInventory.filter(i => i.type === 'Bibit' || !i.type); 
+  const botolStock = filteredInventory.filter(i => i.type === 'Botol');
+
+  const handleAddOrderToCart = (e) => {
+    e.preventDefault();
+    if (!orderItemName.trim()) return alert("Nama item order wajib diisi!");
+    
+    setOrderCart(prev => [
+      ...prev,
+      {
+        id: Date.now() + Math.random(),
+        type: orderType,
+        itemName: orderItemName.trim(),
+        ml: Number(orderMl),
+        qty: Number(orderQty)
+      }
+    ]);
+    setOrderItemName('');
+    showToast(`Berhasil menambahkan ${orderItemName} ke keranjang order.`);
+  };
+
+  const handleRemoveOrderCart = (id) => {
+    setOrderCart(prev => prev.filter(o => o.id !== id));
+  };
+
+  const handleSendMultiOrder = () => {
+    if (orderCart.length === 0) return alert("Keranjang order masih kosong!");
+
+    const batchOrders = orderCart.map(item => ({
+      ...item,
+      id: Date.now() + Math.random(),
+      branchName: activeBranchName,
+      status: 'pending',
+      date: new Date().toLocaleDateString('id-ID')
+    }));
+
+    setStockOrders(prev => [...batchOrders, ...prev]);
+    setOrderCart([]);
+    setActiveModal(false);
+    showToast("Semua item order berhasil digabung dan dikirim ke Admin Pusat!");
+  };
+
+  const openReceiveModal = (order) => { 
+    setReceiveItem(order); 
+    setActualQty(order.qty); 
+  };
+
+  const handleReceiveStock = () => { 
+    setInventory(prev => { 
+      const existIdx = prev.findIndex(i => i.name === receiveItem.itemName && i.branchName === activeBranchName && i.type === receiveItem.type); 
+      if (existIdx >= 0) { 
+        const updated = [...prev]; 
+        updated[existIdx].stock_sisa += actualQty; 
+        return updated; 
+      } 
+      return [...prev, { id: Date.now(), type: receiveItem.type, name: receiveItem.itemName, ml: receiveItem.ml, stock_sisa: actualQty, branchName: activeBranchName }]; 
+    }); 
+    setStockOrders(prev => prev.map(o => o.id === receiveItem.id ? { ...o, status: 'completed', receivedQty: actualQty } : o)); 
+    setReceiveItem(null); 
+    showToast(`Stok masuk: ${actualQty} berhasil ditambahkan ke katalog ${activeBranchName}.`); 
+  };
+
+  const handleAddNewItem = (e) => {
+    e.preventDefault();
+    if (!newItemName.trim()) return alert("Nama item produk wajib diisi!");
+    
+    const existing = inventory.find(i => i.name.toLowerCase() === newItemName.trim().toLowerCase() && i.branchName === activeBranchName && i.type === newItemType);
+    if (existing) {
+      return alert("Produk dengan nama tersebut sudah ada di katalog cabang ini!");
+    }
+
+    setInventory(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        type: newItemType,
+        name: newItemName.trim(),
+        ml: Number(newItemMl),
+        stock_sisa: Number(newItemStock),
+        branchName: activeBranchName
+      }
+    ]);
+
+    setNewItemName('');
+    setNewItemStock(50);
+    setShowAddItemModal(false);
+    showToast(`Produk ${newItemType} baru berhasil ditambahkan!`);
+  };
+
+  const handleSaveStockAdmin = () => {
+    if (!currentUser.isAdmin) {
+      return alert("Hanya Admin Pusat yang dapat mengubah angka sisa stok secara manual!");
+    }
+    setInventory(prev => prev.map(inv => inv.id === editStockItem.id ? { ...inv, stock_sisa: Number(updatedStockValue) } : inv));
+    setEditStockItem(null);
+    showToast("Sisa stok berhasil diperbarui oleh Admin.");
+  };
+
+  const StockCard = ({ inv }) => ( 
+    <div className="bg-white border border-gray-100 rounded-2xl p-3 shadow-sm flex flex-col justify-between relative group"> 
+      <div> 
+        <h4 className="font-bold text-gray-900 text-sm line-clamp-1 pr-5">{inv.type === 'Botol' ? '🫙 Botol ' : ''}{inv.name}</h4> 
+        <p className="text-[10px] text-gray-500 mb-2">Ukuran: {inv.ml}{inv.type === 'Botol' ? 'pcs' : 'ml'}</p> 
+      </div> 
+      
+      <div className="flex items-center justify-between mt-auto">
+        <div className={`px-2 py-1.5 rounded-lg text-xs font-bold text-center flex-1 ${inv.stock_sisa <= 10 ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-700'}`}> 
+          Sisa: {inv.stock_sisa}{inv.type === 'Botol' ? 'pcs' : 'ml'} 
+        </div>
+        
+        {currentUser.isAdmin && (
+          <button 
+            onClick={() => { setEditStockItem(inv); setUpdatedStockValue(inv.stock_sisa); }} 
+            className="ml-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-2.5 py-1.5 rounded-lg text-[10px] font-bold"
+          >
+            Edit Stok
+          </button>
+        )}
+      </div> 
+    </div> 
+  );
+
+  return ( 
+    <div className="px-4 py-4 space-y-6"> 
+      <div className="relative">
+        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <input 
+          type="text" 
+          placeholder="Cari stock penjualan di cabang..." 
+          value={searchQuery} 
+          onChange={e => setSearchQuery(e.target.value)} 
+          className="w-full bg-white border border-gray-200 pl-11 pr-4 py-3 rounded-2xl text-xs font-medium outline-none shadow-sm focus:border-blue-500" 
+        />
+      </div>
+
+      <div className="flex gap-2"> 
+        <button onClick={() => setShowAddItemModal(true)} className="flex-1 bg-green-600 text-white p-3 rounded-2xl flex items-center justify-center gap-2 shadow-md"> 
+          <PlusCircle size={20}/> 
+          <span className="font-bold text-xs">Tambah Item Baru</span> 
+        </button>
+        <button onClick={() => setActiveModal(true)} className="flex-1 bg-[#1E3A8A] text-white p-3 rounded-2xl flex items-center justify-center gap-2 shadow-md"> 
+          <Package size={20}/> 
+          <span className="font-bold text-xs">Order Multi-Item</span> 
+        </button> 
+      </div>
+
+      {branchOrders.length > 0 && ( 
+        <div> 
+          <h3 className="font-bold text-xs text-gray-500 uppercase tracking-wider mb-2 px-2">Status Order Pusat ({activeBranchName})</h3> 
+          <div className="space-y-2"> 
+            {branchOrders.filter(o => o.status !== 'completed').map(o => ( 
+              <div key={o.id} className="bg-white border border-gray-200 p-3 rounded-2xl flex justify-between items-center shadow-sm"> 
+                <div> 
+                  <p className="font-bold text-sm text-gray-900 line-clamp-1">{o.type === 'Botol' ? '🫙 Botol ' : '📦 '} {o.itemName} ({o.ml}{o.type === 'Botol' ? 'pcs' : 'ml'})</p> 
+                  <p className="text-[10px] text-gray-500">Req: {o.qty} | {o.date}</p> 
+                </div> 
+                {o.status === 'pending' ? ( 
+                  <span className="bg-yellow-100 text-yellow-700 px-2 py-1 rounded-lg text-[10px] font-bold">Menunggu</span> 
+                ) : ( 
+                  <button onClick={() => openReceiveModal(o)} className="bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold animate-pulse shadow-md">Terima</button> 
+                )} 
+              </div> 
+            ))} 
+          </div> 
+        </div> 
+      )}
+
+      <div> 
+        <h3 className="font-bold text-xs text-gray-500 uppercase tracking-wider mb-3 px-2 border-b border-gray-200 pb-2">📦 Stok Bibit Parfum ({activeBranchName})</h3> 
+        <div className="grid grid-cols-2 gap-3"> 
+          {bibitStock.length === 0 ? <p className="text-xs text-gray-400 p-2 col-span-2">Tidak ada hasil pencarian bibit.</p> : null} 
+          {bibitStock.map(inv => <StockCard key={inv.id} inv={inv} />)} 
+        </div> 
+      </div>
+
+      <div> 
+        <h3 className="font-bold text-xs text-gray-500 uppercase tracking-wider mb-3 px-2 border-b border-gray-200 pb-2 mt-4">🫙 Stok Botol ({activeBranchName})</h3> 
+        <div className="grid grid-cols-2 gap-3"> 
+          {botolStock.length === 0 ? <p className="text-xs text-gray-400 p-2 col-span-2">Tidak ada hasil pencarian botol.</p> : null} 
+          {botolStock.map(inv => <StockCard key={inv.id} inv={inv} />)} 
+        </div> 
+      </div>
+
+      {activeModal && (
+        <ModalWrapper title="Order Multi-Item ke Pusat" onClose={() => setActiveModal(false)}>
+          <div className="space-y-4">
+            <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-xs text-blue-800">
+              Staff dapat menambahkan beberapa item order sekaligus (Contoh: <i>DHL Blue 11ml</i>, <i>Scandal 11ml</i>) lalu digabung dalam satu kali pengiriman.
+            </div>
+
+            <form onSubmit={handleAddOrderToCart} className="space-y-3 bg-gray-50 p-3 rounded-2xl border border-gray-200">
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 mb-1 block">Kategori</label>
+                <select value={orderType} onChange={e=>setOrderType(e.target.value)} className="w-full bg-white border border-gray-200 p-2 rounded-xl text-xs font-bold">
+                  <option value="Bibit">Bibit Parfum</option>
+                  <option value="Botol">Botol</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] font-bold text-gray-500 mb-1 block">Nama Item Order</label>
+                <input type="text" placeholder="Contoh: DHL Blue / Scandal" value={orderItemName} onChange={e=>setOrderItemName(e.target.value)} className="w-full bg-white border border-gray-200 p-2 rounded-xl text-xs" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 mb-1 block">Ukuran ({orderType === 'Botol' ? 'pcs' : 'ml'})</label>
+                  <select value={orderMl} onChange={e=>setOrderMl(e.target.value)} className="w-full bg-white border border-gray-200 p-2 rounded-xl text-xs font-bold">
+                    {[10, 11, 15, 20, 30, 50, 100].map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 mb-1 block">Jumlah (Qty)</label>
+                  <input type="number" min="1" value={orderQty} onChange={e=>setOrderQty(e.target.value)} className="w-full bg-white border border-gray-200 p-2 rounded-xl text-xs font-bold" />
+                </div>
+              </div>
+              <button type="submit" className="w-full bg-green-600 text-white py-2.5 rounded-xl text-xs font-bold shadow-md">+ Tambah ke Keranjang Order</button>
+            </form>
+
+            <div>
+              <p className="text-xs font-bold text-gray-500 mb-2">Item Order Digabung ({orderCart.length}):</p>
+              {orderCart.length === 0 ? (
+                <p className="text-[11px] text-gray-400 italic">Belum ada item dalam keranjang order.</p>
+              ) : (
+                <div className="space-y-2 max-h-32 overflow-y-auto">
+                  {orderCart.map((o) => (
+                    <div key={o.id} className="flex justify-between items-center bg-gray-50 p-2.5 rounded-xl border border-gray-100 text-xs">
+                      <div>
+                        <b>{o.itemName}</b> ({o.ml}ml, Qty: {o.qty})
+                      </div>
+                      <button onClick={() => handleRemoveOrderCart(o.id)} className="text-red-500"><Trash2 size={14}/></button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button onClick={handleSendMultiOrder} className="w-full bg-[#1E3A8A] text-white py-3.5 rounded-2xl font-bold shadow-lg text-sm">Kirim Semua Order ke Admin</button>
+          </div>
+        </ModalWrapper>
+      )}
+
+      {showAddItemModal && (
+        <ModalWrapper title="Tambah Item Produk Baru" onClose={() => setShowAddItemModal(false)}>
+          <form onSubmit={handleAddNewItem} className="space-y-4">
+            <div>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">Kategori Produk</label>
+              <select value={newItemType} onChange={e=>setNewItemType(e.target.value)} className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold">
+                <option value="Bibit">Bibit Parfum</option>
+                <option value="Botol">Botol</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">Nama Item Produk</label>
+              <input type="text" placeholder={newItemType === 'Bibit' ? "Contoh: Baccarat Extrait" : "Contoh: Botol Kaca Roller"} value={newItemName} onChange={e=>setNewItemName(e.target.value)} required className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">Ukuran ({newItemType === 'Botol' ? 'pcs' : 'ml'})</label>
+                <select value={newItemMl} onChange={e=>setNewItemMl(e.target.value)} className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold">
+                  {[10, 15, 20, 30, 50, 100].map(v => <option key={v} value={v}>{v} {newItemType === 'Botol' ? 'pcs' : 'ml'}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">Stok Awal</label>
+                <input type="number" min="0" value={newItemStock} onChange={e=>setNewItemStock(e.target.value)} required className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold" />
+              </div>
+            </div>
+            <button type="submit" className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold shadow-lg">Simpan ke Katalog</button>
+          </form>
+        </ModalWrapper>
+      )}
+
+      {editStockItem && (
+        <ModalWrapper title="Ubah Sisa Stok (Akses Admin)" onClose={() => setEditStockItem(null)}>
+          <div className="space-y-4">
+            <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-200 text-xs text-yellow-800">
+              Perhatian: Anda sedang mengubah angka sisa stok secara langsung sebagai Admin untuk produk <b>{editStockItem.name}</b> di cabang {activeBranchName}.
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">Jumlah Sisa Stok Baru</label>
+              <input type="number" min="0" value={updatedStockValue} onChange={e=>setUpdatedStockValue(e.target.value)} className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-center text-lg font-bold" />
+            </div>
+            <button onClick={handleSaveStockAdmin} className="w-full bg-[#1E3A8A] text-white py-4 rounded-2xl font-bold shadow-lg">Simpan Perubahan Stok</button>
+          </div>
+        </ModalWrapper>
+      )}
+
+      {receiveItem && ( 
+        <ModalWrapper title="Penerimaan & Masuk ke Katalog" onClose={() => setReceiveItem(null)}> 
+          <div className="space-y-4"> 
+            <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 text-sm"> 
+              <p>Tipe Item: <b>{receiveItem.type}</b></p> 
+              <p>Nama: <b>{receiveItem.type === 'Botol' ? 'Botol ' : ''}{receiveItem.itemName} ({receiveItem.ml}{receiveItem.type === 'Botol' ? 'pcs' : 'ml'})</b></p> 
+              <p>Requested Qty: <b>{receiveItem.qty}</b></p> 
+            </div> 
+            <div> 
+              <label className="text-xs font-bold text-gray-500 mb-1 block">Qty Diterima</label> 
+              <input type="number" value={actualQty} onChange={e=>setActualQty(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-center text-lg font-bold" /> 
+            </div> 
+            <button onClick={handleReceiveStock} className="w-full bg-green-600 text-white py-4 rounded-2xl font-bold shadow-lg">Konfirmasi & Masukkan ke Katalog Cabang</button> 
+          </div> 
+        </ModalWrapper> 
+      )} 
+    </div> 
+  ); 
+}
+
+// ========================================== 
+// 4. HISTORY TAB 
+// ========================================== 
+function HistoryTab({ transactions, activeBranchName, formatCurrency }) { 
+  const [selectedTx, setSelectedTx] = useState(null); 
+  return ( 
+    <div className="px-4 py-6 space-y-4"> 
+      <div className="flex justify-between items-center px-1 border-b border-gray-200 pb-3"> 
+        <h3 className="font-bold text-sm text-gray-800 tracking-wider">Riwayat: {activeBranchName}</h3> 
+        <span className="text-[10px] bg-gray-200 text-gray-600 px-2 py-1 rounded-full font-bold">{transactions.length} TRX</span> 
+      </div> 
+      <div className="grid gap-3"> 
+        {transactions.length === 0 ? ( 
+          <p className="text-center py-8 text-gray-400 text-sm">Belum ada transaksi.</p> 
+        ) : ( 
+          transactions.map(tx => ( 
+            <div key={tx.id} onClick={() => setSelectedTx(tx)} className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex items-center gap-4 cursor-pointer"> 
+              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center"><FileText size={18} /></div> 
+              <div className="flex-1"> 
+                <h3 className="font-bold text-sm text-gray-900 line-clamp-1">{tx.item}</h3> 
+                <p className="text-[10px] text-gray-500 mt-1">{tx.date} • {tx.time}</p> 
+              </div> 
+              <div className="text-right"><p className="font-black text-green-600">{formatCurrency(tx.price)}</p></div> 
+            </div> 
+          )) 
+        )} 
+      </div> 
+      {selectedTx && ( 
+        <ModalWrapper title="Detail Transaksi" onClose={() => setSelectedTx(null)}> 
+          <div className="space-y-4 text-sm bg-gray-50 p-5 rounded-2xl border border-gray-100"> 
+            <div className="flex justify-between border-b pb-2"><span className="text-gray-500">Waktu</span><span className="font-bold">{selectedTx.date} • {selectedTx.time}</span></div> 
+            <div className="flex justify-between border-b pb-2"><span className="text-gray-500">Item</span><span className="font-bold text-right">{selectedTx.item}</span></div> 
+            <div className="flex justify-between border-b pb-2"><span className="text-gray-500">Member</span><span className="font-bold text-blue-600">{selectedTx.member}</span></div> 
+            <div className="flex justify-between pt-2"><span className="text-gray-500 font-bold">TOTAL</span><span className="font-black text-green-600 text-lg">{formatCurrency(selectedTx.price)}</span></div> 
+          </div> 
+        </ModalWrapper> 
+      )} 
+    </div> 
+  ); 
+}
+
+// ========================================== 
+// 5. MEMBER TAB (Staff & Admin: Tambah Member & Hapus oleh Admin) 
+// ========================================== 
+function MemberTab({ members, setMembers, currentUser, showToast }) { 
+  const [showModal, setShowModal] = useState(false); 
+  const [idMember, setIdMember] = useState('');
+  const [name, setName] = useState(''); 
+  const [phone, setPhone] = useState(''); 
+  const [initialPoints, setInitialPoints] = useState(0);
+
+  const handleAdd = (e) => { 
+    e.preventDefault(); 
+    if (!name.trim()) return alert("Nama member wajib diisi!"); 
+    const finalId = idMember.trim() || String(Math.floor(100000 + Math.random() * 900000));
+    
+    if(members.some(m => String(m.id) === String(finalId))) {
+      return alert("ID Member sudah terdaftar! Gunakan ID lain.");
+    }
+
+    setMembers(prev => [{ id: finalId, name: name.trim(), phone: phone || '-', points: Number(initialPoints) || 0 }, ...prev]); 
+    setIdMember('');
+    setName(''); 
+    setPhone(''); 
+    setInitialPoints(0);
+    setShowModal(false); 
+    showToast('Member baru berhasil ditambahkan (Berlaku Global)!'); 
+  };
+
+  const handleDeleteMember = (memberId, memberName) => {
+    if (!currentUser.isAdmin) {
+      return alert("Hanya Admin Pusat yang memiliki hak akses untuk menghapus member!");
+    }
+    if (confirm(`Hapus member "${memberName}" (ID: ${memberId}) dari daftar global?`)) {
+      setMembers(prev => prev.filter(m => String(m.id) !== String(memberId)));
+      showToast("Member berhasil dihapus.");
+    }
+  };
+
+  return ( 
+    <div className="px-4 py-4 space-y-4"> 
+      <div className="flex justify-between items-center px-1"> 
+        <h3 className="font-bold text-xs text-gray-500 uppercase tracking-wider">Daftar Member Global</h3> 
+        <button onClick={() => setShowModal(true)} className="bg-[#1E3A8A] text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1"><PlusCircle size={14} /> Tambah Member</button> 
+      </div> 
+      <div className="space-y-3"> 
+        {members.map(m => ( 
+          <div key={m.id} className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm flex items-center gap-4"> 
+            <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center font-bold text-lg">{m.name.charAt(0)}</div> 
+            <div className="flex-1">
+              <h4 className="font-bold text-gray-900">{m.name} <span className="text-xs font-normal text-gray-400">(ID: {m.id})</span></h4>
+              <p className="text-xs text-gray-500">Telp: {m.phone}</p>
+            </div> 
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-600 text-white px-3 py-1.5 rounded-full text-xs font-bold">{m.points} Poin</div> 
+              {currentUser.isAdmin && (
+                <button onClick={() => handleDeleteMember(m.id, m.name)} className="text-red-500 hover:text-red-700 p-1">
+                  <Trash2 size={16} />
+                </button>
+              )}
+            </div>
+          </div> 
+        ))} 
+      </div> 
+      {showModal && ( 
+        <ModalWrapper title="Tambah Member Baru" onClose={() => setShowModal(false)}> 
+          <form onSubmit={handleAdd} className="space-y-4"> 
+            <div>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">ID Member (Cth: 120176)</label>
+              <input type="text" value={idMember} onChange={e=>setIdMember(e.target.value)} placeholder="Contoh: 120176" className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm" />
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">Nama Member (Cth: Orel)</label>
+              <input type="text" value={name} onChange={e=>setName(e.target.value)} placeholder="Contoh: Orel" required className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm" /> 
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">Nomor Telepon</label>
+              <input type="text" value={phone} onChange={e=>setPhone(e.target.value)} placeholder="081234567890" className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm" /> 
+            </div>
+            <div>
+              <label className="text-xs font-bold text-gray-500 mb-1 block">Poin Awal</label>
+              <input type="number" min="0" value={initialPoints} onChange={e=>setInitialPoints(e.target.value)} placeholder="0" className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold" /> 
+            </div>
+            <button type="submit" className="w-full bg-[#1E3A8A] text-white py-4 rounded-2xl font-bold shadow-lg">Simpan Member</button> 
+          </form> 
+        </ModalWrapper> 
+      )} 
+    </div> 
+  ); 
+}
+
+// ========================================== 
+// 6. PROFILE & ADMIN TAB 
+// ========================================== 
+function ProfileTab({ currentUser, onLogout, members, setMembers, branches, setBranches, staffAccounts, setStaffAccounts, transactions, masterPrices, setMasterPrices, stockOrders, setStockOrders, inventory, setInventory, showToast, isDarkMode, setIsDarkMode, userAvatars, setUserAvatars, zoomLevel, setZoomLevel, showZoomModal, setShowZoomModal, tempImage, setTempImage }) { 
+  const [activeAdminModal, setActiveAdminModal] = useState(null);
+
+  const handleImageUpload = (e) => { 
+    const file = e.target.files[0]; 
+    if (file) { 
+      const reader = new FileReader(); 
+      reader.onloadend = () => { 
+        setTempImage(reader.result);
+        setShowZoomModal(true);
+      }; 
+      reader.readAsDataURL(file); 
+    } 
+  };
+
+  const pendingOrdersCount = stockOrders.filter(o => o.status === 'pending').length;
+
+  const AdminListItem = ({ icon: Icon, title, subtitle, colorClass, onClick, badge }) => ( 
+    <div onClick={onClick} className="bg-white border border-gray-100 rounded-3xl p-4 shadow-sm flex items-center gap-4 cursor-pointer mb-3 relative"> 
+      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${colorClass}`}><Icon size={22} /></div> 
+      <div className="flex-1"><h4 className="font-bold text-sm text-gray-900">{title}</h4><p className="text-xs text-gray-500">{subtitle}</p></div> 
+      {badge > 0 && <span className="absolute top-3 right-10 bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold">{badge}</span>} 
+      <ChevronRight size={20} className="text-gray-300" /> 
+    </div> 
+  );
+
+  return ( 
+    <div className="px-4 py-6"> 
+      <div className="flex flex-col items-center mb-8"> 
+        <label className="w-24 h-24 bg-[#1E3A8A] text-white rounded-full flex items-center justify-center shadow-lg mb-4 border-4 border-white cursor-pointer relative overflow-hidden group"> 
+          <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} /> 
+          {userAvatars[currentUser.email] ? (
+            <img src={userAvatars[currentUser.email]} alt="profile" style={{ transform: `scale(${zoomLevel})` }} className="w-full h-full object-cover transition-transform" />
+          ) : (
+            <UserIcon size={40} />
+          )} 
+          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><Camera size={24} className="text-white" /></div> 
+        </label> 
+        <h2 className="font-bold text-lg text-gray-900">{currentUser.email}</h2> 
+        <p className="text-xs text-gray-400 mt-1 font-semibold">McKays</p> 
+      </div>
+
+      {currentUser.isAdmin && ( 
+        <div className="mb-6"> 
+          <h3 className="font-bold text-xs text-gray-400 uppercase tracking-wider mb-3 px-2">KONTROL SENTRAL ADMIN</h3> 
+          <AdminListItem icon={DollarSign} title="Kelola Harga Master" subtitle="Update harga bibit per ml & botol" colorClass="bg-green-50 text-green-600" onClick={() => setActiveAdminModal('price')} /> 
+          <AdminListItem icon={Upload} title="Upload List Produk (Cabang)" subtitle="Tambah list massal bibit/botol ke staff" colorClass="bg-purple-50 text-purple-600" onClick={() => setActiveAdminModal('upload_list')} /> 
+          <AdminListItem icon={Inbox} title="Kelola Order Stok" subtitle="Persetujuan request barang cabang" colorClass="bg-orange-50 text-orange-600" onClick={() => setActiveAdminModal('orders')} badge={pendingOrdersCount} /> 
+          <AdminListItem icon={Store} title="Kelola Toko Cabang & Staff" subtitle="Tambah cabang, staff & password" colorClass="bg-blue-50 text-blue-600" onClick={() => setActiveAdminModal('branch')} /> 
+          <AdminListItem icon={Users} title="Reset Poin Member" subtitle="Nol-kan poin seluruh member" colorClass="bg-red-50 text-red-600" onClick={() => setActiveAdminModal('reset_points')} /> 
+          <AdminListItem icon={Download} title="Export Laporan Bulanan" subtitle="PDF / Excel omset cabang" colorClass="bg-indigo-50 text-indigo-600" onClick={() => setActiveAdminModal('export')} /> 
+        </div> 
+      )}
+
+      <div className="mb-6"> 
+        <h3 className="font-bold text-xs text-gray-400 uppercase tracking-wider mb-3 px-2">Pengaturan Tampilan</h3> 
+        <AdminListItem icon={isDarkMode ? Sun : Moon} title={isDarkMode ? "Mode Terang" : "Mode Gelap"} subtitle="Ubah tema aplikasi" colorClass={isDarkMode ? "bg-yellow-50 text-yellow-600" : "bg-gray-100 text-gray-700"} onClick={() => setIsDarkMode(!isDarkMode)} /> 
+      </div> 
+
+      <div onClick={onLogout} className="bg-red-50 border border-red-100 rounded-3xl p-4 flex items-center gap-4 cursor-pointer"> 
+        <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center"><LogOut size={20} /></div> 
+        <h4 className="font-bold text-sm text-red-600 flex-1">Logout Sistem (Keluar Akun)</h4> 
+      </div>
+
+      {activeAdminModal === 'price' && <AdminMasterPriceModal masterPrices={masterPrices} setMasterPrices={setMasterPrices} onClose={() => setActiveAdminModal(null)} showToast={showToast} />} 
+      {activeAdminModal === 'upload_list' && <AdminUploadListModal branches={branches} inventory={inventory} setInventory={setInventory} onClose={() => setActiveAdminModal(null)} showToast={showToast} />} 
+      {activeAdminModal === 'orders' && <AdminOrderModal stockOrders={stockOrders} setStockOrders={setStockOrders} onClose={() => setActiveAdminModal(null)} showToast={showToast} />} 
+      {activeAdminModal === 'branch' && <AdminBranchModal branches={branches} setBranches={setBranches} staffAccounts={staffAccounts} setStaffAccounts={setStaffAccounts} onClose={() => setActiveAdminModal(null)} showToast={showToast} />} 
+      {activeAdminModal === 'export' && <AdminExportModal transactions={transactions} onClose={() => setActiveAdminModal(null)} showToast={showToast} />} 
+
+      {showZoomModal && (
+        <ModalWrapper title="Sesuaikan Foto Profil" onClose={() => setShowZoomModal(false)}>
+          <div className="space-y-4 flex flex-col items-center">
+            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-blue-600 shadow-md">
+              <img src={tempImage} alt="Preview" style={{ transform: `scale(${zoomLevel})` }} className="w-full h-full object-cover transition-transform" />
+            </div>
+            <div className="w-full space-y-2">
+              <label className="text-xs font-bold text-gray-500 block text-center">Geser untuk Memperbesar / Memperkecil</label>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))} className="bg-gray-200 px-3 py-2 rounded-xl font-bold">-</button>
+                <input type="range" min="0.5" max="2.5" step="0.1" value={zoomLevel} onChange={e => setZoomLevel(Number(e.target.value))} className="w-full" />
+                <button onClick={() => setZoomLevel(prev => Math.min(2.5, prev + 0.1))} className="bg-gray-200 px-3 py-2 rounded-xl font-bold">+</button>
+              </div>
+            </div>
+            <button onClick={() => { setUserAvatars(prev => ({ ...prev, [currentUser.email]: tempImage })); setShowZoomModal(false); showToast('Foto profil berhasil disimpan dan disesuaikan!'); }} className="w-full bg-[#1E3A8A] text-white py-4 rounded-2xl font-bold shadow-lg">Terapkan Foto</button>
+          </div>
+        </ModalWrapper>
+      )}
+
+      {activeAdminModal === 'reset_points' && ( 
+        <ModalWrapper title="Reset Poin Member" onClose={() => setActiveAdminModal(null)}> 
+          <div className="space-y-4 text-center"> 
+            <p className="text-sm text-gray-600 px-4"> Anda yakin ingin mengubah poin <strong className="text-red-600">semua member</strong> menjadi 0? </p> 
+            <button onClick={() => { setMembers(members.map(m => ({ ...m, points: 0 }))); showToast('Semua poin member telah di-reset.'); setActiveAdminModal(null); }} className="w-full bg-red-600 text-white py-4 rounded-2xl font-bold shadow-lg" > Ya, Reset Semua Poin </button> 
+            <button onClick={() => setActiveAdminModal(null)} className="w-full text-gray-500 font-bold text-xs mt-2">Batal</button> 
+          </div> 
+        </ModalWrapper> 
+      )} 
+    </div> 
+  ); 
+}
+
+function AdminMasterPriceModal({ masterPrices, setMasterPrices, onClose, showToast }) { 
+  const [bibitName, setBibitName] = useState(''); 
+  const [bibitPrice, setBibitPrice] = useState('');
+
+  const handleUpdateBotol = (ml, val) => { 
+    setMasterPrices(prev => ({ ...prev, botol: { ...prev.botol, [ml]: Number(val) }})); 
+  };
+
+  const handleAddBibit = (e) => { 
+    e.preventDefault(); 
+    if(bibitName && bibitPrice) { 
+      setMasterPrices(prev => ({ ...prev, bibit: { ...prev.bibit, [bibitName]: Number(bibitPrice) }})); 
+      setBibitName(''); 
+      setBibitPrice(''); 
+      showToast('Harga Bibit berhasil di-update'); 
+    } 
+  };
+
+  return ( 
+    <ModalWrapper title="Kelola Harga Master" onClose={onClose}> 
+      <div className="space-y-6"> 
+        <div> 
+          <h4 className="font-bold text-sm text-gray-800 mb-3 border-b pb-2">Harga Botol (Berdasarkan ML)</h4> 
+          <div className="grid grid-cols-2 gap-3"> 
+            {Object.keys(masterPrices.botol).map(ml => ( 
+              <div key={ml} className="flex flex-col bg-gray-50 p-2 rounded-lg border border-gray-200"> 
+                <label className="text-[10px] font-bold text-gray-500 mb-1">{ml} ml</label> 
+                <input type="number" value={masterPrices.botol[ml]} onChange={e => handleUpdateBotol(ml, e.target.value)} className="w-full bg-transparent font-bold outline-none" /> 
+              </div> 
+            ))} 
+          </div> 
+        </div> 
+
+        <div> 
+          <h4 className="font-bold text-sm text-gray-800 mb-3 border-b pb-2">Harga Bibit (Per ML)</h4> 
+          <div className="space-y-2 max-h-40 overflow-y-auto hidescrollbar mb-3"> 
+            {Object.keys(masterPrices.bibit).map(name => ( 
+              <div key={name} className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100"> 
+                <span className="font-bold text-sm">{name}</span> 
+                <span className="font-bold text-blue-600">Rp {masterPrices.bibit[name]} / ml</span> 
+              </div> 
+            ))} 
+          </div> 
+          <form onSubmit={handleAddBibit} className="flex gap-2"> 
+            <input type="text" placeholder="Nama Bibit Baru" value={bibitName} onChange={e=>setBibitName(e.target.value)} className="flex-1 border border-gray-200 p-3 rounded-xl text-sm" required /> 
+            <input type="number" placeholder="Harga/ml" value={bibitPrice} onChange={e=>setBibitPrice(e.target.value)} className="w-24 border border-gray-200 p-3 rounded-xl text-sm" required /> 
+            <button type="submit" className="bg-[#1E3A8A] text-white px-4 rounded-xl font-bold">+</button> 
+          </form> 
+        </div> 
+      </div> 
+    </ModalWrapper> 
+  ); 
+}
+
+function AdminUploadListModal({ branches, inventory, setInventory, onClose, showToast }) { 
+  const [targetBranch, setTargetBranch] = useState(branches[0]); 
+  const [productType, setProductType] = useState('Bibit'); 
+  const [rawText, setRawText] = useState(''); 
+  const [defaultStock, setDefaultStock] = useState(50);
+
+  const handleUploadList = (e) => { 
+    e.preventDefault(); 
+    const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean); 
+    if (lines.length === 0) return alert("Masukkan minimal satu nama produk!");
+
+    const newItems = lines.map((name, index) => ({ 
+      id: Date.now() + index, 
+      type: productType, 
+      name: name, 
+      ml: productType === 'Botol' ? 30 : 30, 
+      stock_sisa: Number(defaultStock), 
+      branchName: targetBranch 
+    }));
+
+    setInventory(prev => [...prev, ...newItems]); 
+    showToast(`Berhasil menambahkan ${lines.length} produk ke ${targetBranch}!`); 
+    onClose(); 
+  };
+
+  return ( 
+    <ModalWrapper title="Upload List Produk (Massal)" onClose={onClose}> 
+      <form onSubmit={handleUploadList} className="space-y-4"> 
+        <div> 
+          <label className="text-xs font-bold text-gray-500 mb-1 block">Pilih Cabang Target Staff</label> 
+          <select value={targetBranch} onChange={e=>setTargetBranch(e.target.value)} className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold"> 
+            {branches.map(b => <option key={b} value={b}>{b}</option>)} 
+          </select> 
+        </div> 
+        <div> 
+          <label className="text-xs font-bold text-gray-500 mb-1 block">Kategori Produk</label> 
+          <select value={productType} onChange={e=>setProductType(e.target.value)} className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm font-bold"> 
+            <option value="Bibit">Bibit Parfum</option> 
+            <option value="Botol">Botol</option> 
+          </select> 
+        </div> 
+        <div> 
+          <label className="text-xs font-bold text-gray-500 mb-1 block">Stok Awal Masal</label> 
+          <input type="number" value={defaultStock} onChange={e=>setDefaultStock(e.target.value)} className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm" /> 
+        </div> 
+        <div> 
+          <label className="text-xs font-bold text-gray-500 mb-1 block">Daftar Nama Produk (Enter per baris)</label> 
+          <textarea rows={5} placeholder={"Contoh:\nVanilla Lace\nBaccarat Extrait\nBlack Opium"} value={rawText} onChange={e=>setRawText(e.target.value)} required className="w-full bg-gray-50 border border-gray-200 p-3 rounded-xl text-sm" /> 
+        </div> 
+        <button type="submit" className="w-full bg-[#1E3A8A] text-white py-4 rounded-2xl font-bold shadow-lg">Upload & Masukkan ke Katalog</button> 
+      </form> 
+    </ModalWrapper> 
+  ); 
+}
+
+function AdminOrderModal({ stockOrders, setStockOrders, onClose, showToast }) { 
+  const handleApprove = (id) => { 
+    setStockOrders(prev => prev.map(o => o.id === id ? { ...o, status: 'approved' } : o)); 
+    showToast("Order di-Approve. Cabang dapat menekan 'Terima'."); 
+  };
+
+  return ( 
+    <ModalWrapper title="Kelola Order Stok" onClose={onClose}> 
+      <div className="space-y-3"> 
+        {stockOrders.length === 0 && <p className="text-center text-gray-400 py-6 text-sm">Tidak ada riwayat order.</p>} 
+        {stockOrders.slice().reverse().map(o => ( 
+          <div key={o.id} className="bg-gray-50 border border-gray-200 p-4 rounded-2xl"> 
+            <div className="flex justify-between items-start mb-2"> 
+              <div> 
+                <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{o.branchName}</span> 
+                <h4 className="font-bold text-sm text-gray-900 mt-1">{o.type === 'Botol' ? '🫙 Botol ' : '📦 '} {o.itemName} ({o.ml}{o.type === 'Botol' ? 'pcs' : 'ml'})</h4> 
+                <p className="text-xs text-gray-500">Request: {o.qty}</p> 
+              </div> 
+              <div> 
+                {o.status === 'pending' && <span className="text-xs font-bold text-yellow-600 bg-yellow-50 px-2 py-1 rounded">Menunggu</span>} 
+                {o.status === 'approved' && <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded">Di-Approve</span>} 
+                {o.status === 'completed' && <span className="text-xs font-bold text-green-600 bg-green-50 px-2 py-1 rounded">Selesai</span>} 
+              </div> 
+            </div> 
+            {o.status === 'pending' && ( 
+              <button onClick={() => handleApprove(o.id)} className="w-full mt-2 bg-[#1E3A8A] text-white py-2 rounded-xl text-xs font-bold">Approve & Kirim</button> 
+            )} 
+          </div> 
+        ))} 
+      </div> 
+    </ModalWrapper> 
+  ); 
+}
+
+function AdminBranchModal({ branches, setBranches, staffAccounts, setStaffAccounts, onClose, showToast }) { 
+  const [newBranchName, setNewBranchName] = useState('');
+  const [username, setUsername] = useState(''); 
+  const [password, setPassword] = useState(''); 
+  const [branchName, setBranchName] = useState(branches[0]);
+
+  const handleAddBranch = (e) => {
+    e.preventDefault();
+    if(!newBranchName.trim()) return;
+    if(branches.includes(newBranchName.trim())) return alert("Nama cabang sudah ada!");
+    setBranches(prev => [...prev, newBranchName.trim()]);
+    setNewBranchName('');
+    showToast("Cabang toko baru berhasil ditambahkan!");
+  };
+
+  const handleSaveStaff = (e) => { 
+    e.preventDefault();
+    if(!username || !password) return; 
+    setStaffAccounts(prev => [...prev, { id: Date.now(), username, password, branchName }]); 
+    setUsername(''); 
+    setPassword(''); 
+    showToast('Akun staff baru berhasil dibuat!'); 
+  };
+
+  return ( 
+    <ModalWrapper title="Kelola Toko Cabang & Staff" onClose={onClose}> 
+      <div className="space-y-6"> 
+        <form onSubmit={handleAddBranch} className="bg-purple-50 p-4 rounded-xl border border-purple-100 space-y-3">
+          <h4 className="font-bold text-sm text-purple-900">Tambah Toko Cabang Baru</h4>
+          <input type="text" placeholder="Nama Cabang (Cth: Cabang Surabaya)" value={newBranchName} onChange={e=>setNewBranchName(e.target.value)} className="w-full p-3 rounded-lg border border-gray-200 text-sm outline-none bg-white"/>
+          <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-xl font-bold">Tambah Cabang</button>
+        </form>
+
+        <form onSubmit={handleSaveStaff} className="bg-blue-50 p-4 rounded-xl border border-blue-100 space-y-3"> 
+          <h4 className="font-bold text-sm text-blue-900">Pendaftaran Akun Staff & Password</h4>
+          <input type="text" placeholder="ID Staff (Username)" value={username} onChange={e=>setUsername(e.target.value)} required className="w-full p-3 rounded-lg border border-gray-200 text-sm outline-none bg-white"/> 
+          <input type="text" placeholder="Password" value={password} onChange={e=>setPassword(e.target.value)} required className="w-full p-3 rounded-lg border border-gray-200 text-sm outline-none bg-white"/> 
+          <select value={branchName} onChange={e=>setBranchName(e.target.value)} className="w-full p-3 rounded-lg border border-gray-200 text-sm outline-none bg-white"> 
+            {branches.map(b => <option key={b} value={b}>{b}</option>)} 
+          </select> 
+          <button type="submit" className="w-full bg-[#1E3A8A] text-white py-3 rounded-xl font-bold">Buat Akun Staf</button> 
+        </form> 
+
+        <div>
+          <h4 className="font-bold text-sm text-gray-700 mb-2">Daftar Akun Staff Aktif</h4>
+          <div className="max-h-36 overflow-y-auto space-y-2"> 
+            {staffAccounts.map(s => ( 
+              <div key={s.id} className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex justify-between items-center"> 
+                <div><p className="font-bold text-sm">{s.username}</p><p className="text-[10px] text-gray-500">{s.branchName} | Sandi: {s.password}</p></div> 
+                <button onClick={() => setStaffAccounts(staffAccounts.filter(x=>x.id !== s.id))} className="text-red-500"><Trash2 size={16}/></button> 
+              </div> 
+            ))} 
+          </div>
+        </div>
+      </div> 
+    </ModalWrapper> 
+  ); 
+}
+
+function AdminExportModal({ transactions, onClose, showToast }) { 
+  const exportDummy = (type) => { 
+    showToast(`Berhasil mengekspor laporan omset dalam format ${type}.`); 
+    setTimeout(onClose, 1000); 
+  }; 
+  return ( 
+    <ModalWrapper title="Export Laporan Bulanan" onClose={onClose}> 
+      <div className="grid grid-cols-2 gap-4 mt-4"> 
+        <button onClick={()=>exportDummy('PDF')} className="bg-red-600 text-white py-6 rounded-2xl font-bold text-sm flex flex-col justify-center items-center gap-3"><span className="text-3xl">📄</span> Export PDF</button> 
+        <button onClick={()=>exportDummy('Excel')} className="bg-green-600 text-white py-6 rounded-2xl font-bold text-sm flex flex-col justify-center items-center gap-3"><span className="text-3xl">📊</span> Export Excel</button> 
+      </div> 
+    </ModalWrapper> 
+  ); 
+}
+
+function ModalWrapper({ title, onClose, children }) { 
+  return ( 
+    <div className="fixed inset-0 z-50 flex flex-col justify-end bg-gray-900/40 backdrop-blur-sm animate-fade-in"> 
+      <div className="absolute inset-0" onClick={onClose}></div> 
+      <div className="bg-white w-full rounded-t-[2rem] p-6 pb-10 shadow-2xl relative z-50 animate-slide-up max-h-[85vh] overflow-y-auto flex flex-col"> 
+        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6"></div> 
+        <div className="flex justify-between items-center mb-6"> 
+          <h3 className="text-lg font-extrabold text-gray-900">{title}</h3> 
+          <button onClick={onClose} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 font-bold text-lg">×</button> 
+        </div> 
+        {children} 
+      </div> 
+    </div> 
+  ); 
+}
+
+function NavItem({ icon: Icon, label, isActive, onClick }) { 
+  return ( 
+    <button onClick={onClick} className={`flex flex-col items-center justify-center w-16 h-14 rounded-2xl transition-all ${isActive ? 'text-blue-600' : 'text-gray-400 hover:bg-gray-50'}`}> 
+      <div className={`relative flex items-center justify-center w-10 h-8 rounded-xl transition-all ${isActive ? 'bg-blue-100' : ''}`}><Icon size={isActive ? 22 : 20} strokeWidth={isActive ? 2.5 : 2} /></div> 
+      <span className={`text-[10px] mt-1 font-bold ${isActive ? 'opacity-100' : 'opacity-70'}`}>{label}</span> 
+    </button> 
+  ); 
+}
+

@@ -1,0 +1,6 @@
+{
+  "name": "McKays POS",
+  "description": "McKays Perfume Store POS & Multi-Branch Inventory Management System with multi-item blended cashier, stock catalog search, multi-order, and global member management.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
