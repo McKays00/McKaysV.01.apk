@@ -146,7 +146,7 @@ class MckaysStorage(context: Context) {
   }
 
   fun loadInventory(): List<InventoryItem> {
-    val json = prefs.getString("inventory_list", null) ?: return defaultInventory
+    val json = prefs.getString("inventory_list", null) ?: return defaultInventory.sortedBy { it.name.lowercase() }
     val list = mutableListOf<InventoryItem>()
     val array = JSONArray(json)
     for (i in 0 until array.length()) {
@@ -162,7 +162,7 @@ class MckaysStorage(context: Context) {
         )
       )
     }
-    return list
+    return list.sortedBy { it.name.lowercase() }
   }
 
   fun saveTransactions(txList: List<TransactionRecord>) {

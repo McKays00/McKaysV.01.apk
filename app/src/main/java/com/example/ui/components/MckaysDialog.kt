@@ -12,6 +12,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -45,13 +47,15 @@ fun MckaysBottomSheetDialog(
 ) {
   Dialog(
     onDismissRequest = onDismiss,
-    properties = DialogProperties(usePlatformDefaultWidth = false)
+    properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)
   ) {
     Box(
       modifier = Modifier
         .fillMaxWidth()
         .fillMaxHeight()
-        .background(Color.Black.copy(alpha = 0.5f)),
+        .background(Color.Black.copy(alpha = 0.5f))
+        .imePadding()
+        .navigationBarsPadding(),
       contentAlignment = Alignment.BottomCenter
     ) {
       Surface(

@@ -120,7 +120,7 @@ fun HomeScreen(
   val totalOmset = dailyTransactions.sumOf { it.price }
 
   val bestSellers = viewModel.getBestSellers()
-  val branchInventory = inventory.filter { it.branchName == activeBranch }
+  val branchInventory = inventory.filter { it.branchName == activeBranch }.sortedBy { it.name.lowercase() }
   val lowStockItems = branchInventory.filter { it.stockSisa < 10 }.take(4)
 
   var showCashierModal by remember { mutableStateOf(false) }
@@ -481,7 +481,7 @@ fun HomeScreen(
 
   // Multi-Item Cashier Modal
   if (showCashierModal) {
-    val bibitInventory = branchInventory.filter { it.type == "Bibit" }
+    val bibitInventory = branchInventory.filter { it.type == "Bibit" }.sortedBy { it.name.lowercase() }
     val cartBibits = remember { mutableStateListOf<CartBibitItem>() }
 
     var selectedBibitId by remember {

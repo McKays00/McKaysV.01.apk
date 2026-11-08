@@ -100,6 +100,7 @@ class MckaysViewModel(application: Application) : AndroidViewModel(application) 
   val avatarZoom: StateFlow<Float> = _avatarZoom.asStateFlow()
 
   init {
+    _inventory.value = _inventory.value.sortedBy { it.name.lowercase() }
     _currentUser.value?.let { user ->
       if (user.isAdmin) {
         _adminSelectedBranch.value = user.branchName.ifEmpty { "Pusat" }
@@ -359,7 +360,7 @@ class MckaysViewModel(application: Application) : AndroidViewModel(application) 
       stockSisa = initialStock,
       branchName = activeBranch
     )
-    _inventory.value = _inventory.value + newItem
+    _inventory.value = (_inventory.value + newItem).sortedBy { it.name.lowercase() }
     storage.saveInventory(_inventory.value)
     showToast("Produk $type baru berhasil ditambahkan!")
     return true
@@ -427,14 +428,14 @@ class MckaysViewModel(application: Application) : AndroidViewModel(application) 
         list[existingIdx] = current.copy(stockSisa = current.stockSisa + receivedQty)
       }
     } else {
-      _inventory.value = _inventory.value + InventoryItem(
+      _inventory.value = (_inventory.value + InventoryItem(
         id = System.currentTimeMillis(),
         type = order.type,
         name = order.itemName,
         ml = order.ml,
         stockSisa = receivedQty,
         branchName = activeBranch
-      )
+      )).sortedBy { it.name.lowercase() }
     }
     storage.saveInventory(_inventory.value)
 
@@ -545,7 +546,7 @@ class MckaysViewModel(application: Application) : AndroidViewModel(application) 
       )
     }
 
-    _inventory.value = _inventory.value + newItems
+    _inventory.value = (_inventory.value + newItems).sortedBy { it.name.lowercase() }
     storage.saveInventory(_inventory.value)
     showToast("Berhasil menambahkan ${lines.size} produk ke $branch!")
   }
